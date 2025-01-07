@@ -1,4 +1,7 @@
 println("Loading modules.")
+import Pkg
+Pkg.add("Images")
+Pkg.add("FileIO")
 using Images
 using FileIO
 function tinkerbell(a,b,c,d, itr) # ab earlier experiment, plots a tinkerbell map
