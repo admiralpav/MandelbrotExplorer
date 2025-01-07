@@ -30,7 +30,7 @@ function renderimg(data) # takes data from the generator functions
 	g = 232:255 # 24 shade grayscale
 	d = size(data)
 	minval = minimum(data)
-	maxval = maximum(data)
+	maxval = max(maximum(data),minval+1)
 	scaledmin = minval/itr
 	scaledmax = maxval/itr
 	s = ["\e[H"]
@@ -43,7 +43,7 @@ function renderimg(data) # takes data from the generator functions
 		end # two full blocks is approximately a square on most screens
 		push!(s,"\n")
 	end
-	itr = (8*(minval))+100 # automatic iteration control
+	itr = min((8*(minval))+100,10^6) # automatic iteration control
 	print(join(s))
 end # another way this could be done, with double the resolution per line, is to use 2 vertical half blocks,
 # and by controlling the background and the foreground, you could acheive twice the vertical and horizontal resolution
@@ -116,7 +116,7 @@ while true
     res = Int64(ceil((minimum(d)-3)/2)) # get terminal size and scale preview to match
     fractal(res,itr) # generate the image
 	renderimg(dat) # display it in terminal
-    realzoom = Int64(1.25/zoom) # temp variable
+    realzoom = (1.25/zoom) # temp variable
 	print("\e[38;5;255m[wasd to move, i/o to zoom in/out, q to quit, r to render and save, h to home. Zoom is at $realzoom times]>")
 	cmd = readline() # get user input
 	if cmd == "i"
