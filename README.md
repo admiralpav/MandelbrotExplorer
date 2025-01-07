@@ -1,7 +1,8 @@
 # MandelbrotExplorer
 Lightweight and powerful terminal based fractal explorer
 
-![alt text](https://github.com/admiralpav/MandelbrotExplorer/?raw=true)
+![alt text](https://github.com/admiralpav/MandelbrotExplorer/blob/main/gallery/full.png?raw=true)
+
 
 To launch the program, simply execute it with Julia, with the -t flag set to the amount of threads your machine has.
 
