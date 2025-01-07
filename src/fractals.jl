@@ -137,10 +137,10 @@ while true
 		print("Enter resolution> ")
 		@time fractal(parse(Int64,readline()),itr*2) # time the render
 		print("Enter save path> ")
-        min = minimum(dat)
-        max = maximum(dat)
-        dat .-= min # do the same kind of contrast scaling that renderimg does
-		save(readline(),dat ./ (max-min))	
+        minval = minimum(dat)
+        maxval = max(maximum(dat),minval+1)
+        dat .-= minval # do the same kind of contrast scaling that renderimg does
+		save(readline(),dat ./ (maxval-minval))	
 	elseif cmd == "h"
 		global x_center = -0.75
 		global y_center = 0 # reset the viewer
