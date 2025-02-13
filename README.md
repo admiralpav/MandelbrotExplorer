@@ -1,5 +1,5 @@
 # MandelbrotExplorer
-Lightweight and powerful terminal based fractal explorer written in Julia.
+Lightweight terminal based fractal explorer written in Julia.
 
 ![alt text](https://github.com/admiralpav/MandelbrotExplorer/blob/main/gallery/full.png?raw=true)
 
