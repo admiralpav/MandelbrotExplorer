@@ -26,11 +26,11 @@ function progressbar(progress) # https://en.wikipedia.org/wiki/ANSI_escape_code#
 end
 
 function renderimg(data) # takes data from the generator functions
-	global itr # and renders it in the terminal using ANSI
+	global itr, contrast # and renders it in the terminal using ANSI
 	g = 232:255 # 24 shade grayscale
 	d = size(data)
-	minval = minimum(data)
-	maxval = max(maximum(data),minval+1)
+	maxval = maximum(data)
+    minval = min(minimum(data),maxval-1)
 	scaledmin = minval/itr
 	scaledmax = maxval/itr
 	s = ["\e[H"]
@@ -43,19 +43,19 @@ function renderimg(data) # takes data from the generator functions
 		end # two full blocks is approximately a square on most screens
 		push!(s,"\n")
 	end
-	itr = min((8*(minval))+100,10^6) # automatic iteration control
+	itr = min((contrast*(minval))+100,10^6) # automatic iteration control
 	print(join(s))
 end # another way this could be done, with double the resolution per line, is to use 2 vertical half blocks,
 # and by controlling the background and the foreground, you could acheive twice the vertical and horizontal resolution
 # I chose this approach for simplicity
-function mandelbrot(res, lim)
+function mandelbrot(res, lim, doloadbar)
 	global dat, x_center, y_center, zoom # import global settings
 	x_axis = (x_center-zoom):(zoom/res):(x_center+zoom)
 	y_axis = (y_center-zoom):(zoom/res):(y_center+zoom)
 	dat = zeros(Int32, length(y_axis), length(x_axis)) # create output matrix
 	p = 0 # this is just for the progress bar
 	g = floor(length(x_axis)/1000)
-	Threads.@threads for x in 1:length(x_axis)
+	Threads.@threads :greedy for x in 1:length(x_axis)
 		for y in 1:length(y_axis)
 			k = 0
 			c = complex(x_axis[x],y_axis[y]) # makes use of Julia's built-in complex type
@@ -70,20 +70,20 @@ function mandelbrot(res, lim)
 			dat[y,x] = k
 		end
 		p += 1
-		if p % g == 0 # so we don't print the progress bar every time
+		if p % g == 0 && doloadbar # so we don't print the progress bar every time
 			progressbar(p/length(x_axis))
 		end # this removes a print bottleneck
 	end
 end
 
-function burning_ship(res, lim) # exactly the same as the above function, but real and imaginary parts are made positive every iteration
+function burning_ship(res, lim, doloadbar) # exactly the same as the above function, but real and imaginary parts are made positive every iteration
 	global dat, x_center, y_center, zoom
 	x_axis = (x_center-zoom):(zoom/res):(x_center+zoom)
 	y_axis = (y_center-zoom):(zoom/res):(y_center+zoom)
 	dat = zeros(Int32, length(y_axis), length(x_axis))
 	p = 0
 	g = floor(length(x_axis)/1000)
-	Threads.@threads for x in 1:length(x_axis)
+	Threads.@threads :greedy for x in 1:length(x_axis)
 		for y in 1:length(y_axis)
 			k = 0
 			c = complex(x_axis[x],y_axis[y])
@@ -98,26 +98,27 @@ function burning_ship(res, lim) # exactly the same as the above function, but re
 			dat[y,x] = k
 		end
 		p += 1
-		if p % g == 0
+		if p % g == 0 && doloadbar
 			progressbar(p/length(x_axis))
 		end
 	end
 end
 print("Mandelbrot [m] or Burning ship [b]> ")
 fractaltype = readline()
-fractal = fractaltype == "m" ? mandelbrot : burning_ship # using functions as an object
+fractal = fractaltype == "b" ? burning_ship : mandelbrot # using functions as an object
 global x_center = -0.75
 global y_center = 0
 zoom = 1.25
-itr = 150
+itr = 100
+contrast = 8
 # commands: wasd to move by 1/4 zoom in direction, i to zoom in, o to zoom out, q to quit, r to render a large image, zoom is x2 or x1/2
 while true
 	d = displaysize(stdout)
     res = Int64(ceil((minimum(d)-3)/2)) # get terminal size and scale preview to match
-    fractal(res,itr) # generate the image
+    fractal(res,itr,false) # generate the image
 	renderimg(dat) # display it in terminal
     realzoom = (1.25/zoom) # temp variable
-	print("\e[38;5;255m[wasd to move, i/o to zoom in/out, q to quit, r to render and save, h to home. Zoom is at $realzoom times]>")
+	print("\e[38;5;255m[wasd to move, i/o to zoom in/out, q to quit, r to render and save, h to home, c to adjust contrast. Zoom is at $realzoom times, $itr iterations computed.]>")
 	cmd = readline() # get user input
 	if cmd == "i"
 		global zoom /= 2
@@ -135,15 +136,24 @@ while true
         global x_center -= zoom/4
 	elseif cmd == "r" # render image and export
 		print("Enter resolution> ")
-		@time fractal(parse(Int64,readline()),itr*2) # time the render
-		print("Enter save path> ")
-        minval = minimum(dat)
-        maxval = max(maximum(dat),minval+1)
-        dat .-= minval # do the same kind of contrast scaling that renderimg does
-		save(readline(),dat ./ (maxval-minval))	
+        num = parse(Int64,readline())
+        print("Enter save path> ")
+        fname = readline()
+		@time fractal(num,itr*2, true) # time the render
+        min = minimum(dat)
+        max = maximum(dat)
+        dat .-= min # do the same kind of contrast scaling that renderimg does
+		save(fname,Matrix{N0f16}(dat ./ (max-min)))	
 	elseif cmd == "h"
 		global x_center = -0.75
 		global y_center = 0 # reset the viewer
 		global zoom = 1.25
+    elseif cmd == "c"
+        print("Enter contrast (currently $contrast, nothing to reset)> ")
+        try # set the contrast for the automatic iteration control
+            global contrast = parse(Int64,readline())
+        catch
+            global contrast = 8
+        end
 	end
 end
