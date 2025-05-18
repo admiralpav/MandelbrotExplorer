@@ -1,23 +1,15 @@
 println("Loading modules.")
-import Pkg
-Pkg.add("Images")
-Pkg.add("FileIO")
-using Images
-using FileIO
-function tinkerbell(a,b,c,d, itr) # ab earlier experiment, plots a tinkerbell map
-	x = -0.72
-	y = -0.64
-	xar = Vector{Float64}()
-	yar = Vector{Float64}()
-	@time for i in 1:itr
-		x_copy = x + 0
-		x = x^2 - y^2 + a*x + b*y
-		y = 2*x_copy*y + c*x_copy + d*y
-		push!(xar, x)
-		push!(yar, y)
-	end
-	display(scatter(xar,yar,markersize=0))
+try
+	using Images
+	using FileIO
+catch
+	import Pkg
+	Pkg.add("Images")
+	Pkg.add("FileIO")
+	using Images
+	using FileIO
 end
+
 
 function progressbar(progress) # https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
 	k = round(progress*100, digits=1) # displays a dynamic progress bar
@@ -25,7 +17,7 @@ function progressbar(progress) # https://en.wikipedia.org/wiki/ANSI_escape_code#
 	println(j)
 end
 
-function renderimg(data) # takes data from the generator functions
+function renderimg(data, highdetail) # takes data from the generator functions
 	global itr, contrast # and renders it in the terminal using ANSI
 	g = 232:255 # 24 shade grayscale
 	d = size(data)
@@ -34,12 +26,19 @@ function renderimg(data) # takes data from the generator functions
 	scaledmin = minval/itr
 	scaledmax = maxval/itr
 	s = ["\e[H"]
-	for x in 1:d[1]
-		for y in 1:d[2]
+	for x in (highdetail ? (1:2:d[1]) : (1:d[1]) )
+		for y in 1:1:d[2]
 			val = data[x,y]/itr
 			scaledval = (val-scaledmin)/(scaledmax-scaledmin)*(length(g)-1) # this scales the data so black is the
 			element = g[Int64(round(scaledval))+1] # least iterations, and white is the most
-			push!(s,"\e[38;5;$element"*"m██") # this uses an ANSI color code to change the color of two full block characters
+			if highdetail
+				val2 = data[minimum([x+1,d[1]]),y]/itr
+            	scaledval2 = (val2-scaledmin)/(scaledmax-scaledmin)*(length(g)-1) # this scales the data so black is the
+            	element2 = g[Int64(round(scaledval2))+1]
+				push!(s,"\e[48;5;$element" * "m\e[38;5;$element2" * "m▄") # this uses an ANSI color code to change the color of a half block character and its background
+			else
+				push!(s,"\e[38;5;$element" * "m██")
+			end
 		end # two full blocks is approximately a square on most screens
 		push!(s,"\n")
 	end
@@ -104,8 +103,10 @@ function burning_ship(res, lim, doloadbar) # exactly the same as the above funct
 	end
 end
 print("Mandelbrot [m] or Burning ship [b]> ")
-fractaltype = readline()
+fractaltype = lowercase(readline())
 fractal = fractaltype == "b" ? burning_ship : mandelbrot # using functions as an object
+print("What terminal rendering method? [f]ast or [d]etailed> ")
+usenewrendermethod = lowercase(readline()) == "d"
 global x_center = -0.75
 global y_center = 0
 zoom = 1.25
@@ -114,11 +115,12 @@ contrast = 8
 # commands: wasd to move by 1/4 zoom in direction, i to zoom in, o to zoom out, q to quit, r to render a large image, zoom is x2 or x1/2
 while true
 	d = displaysize(stdout)
-    res = Int64(ceil((minimum(d)-3)/2)) # get terminal size and scale preview to match
+    res = usenewrendermethod ? Int64(floor(minimum([d[1],d[2]*2])-2)) : Int64(ceil((minimum(d)-3)/2))
+	# get terminal size and scale preview to match
     fractal(res,itr,false) # generate the image
-	renderimg(dat) # display it in terminal
+	renderimg(dat, usenewrendermethod) # display it in terminal
     realzoom = (1.25/zoom) # temp variable
-	print("\e[38;5;255m[wasd to move, i/o to zoom in/out, q to quit, r to render and save, h to home, c to adjust contrast. Zoom is at $realzoom times, $itr iterations computed.]>")
+	print("\e[0m[wasd to move, i/o to zoom in/out, q to quit, r to render and save, h to home, c to adjust contrast. Zoom is at $realzoom times, $itr iterations computed.]>")
 	cmd = readline() # get user input
 	if cmd == "i"
 		global zoom /= 2
